@@ -1,0 +1,55 @@
+services:
+  backend:
+    build:
+      context: .                          
+      dockerfile: config/docker/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - SECRET_KEY=test
+      - JWT_SECRET_KEY=test
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - cidadao-net
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: cidadao
+      POSTGRES_PASSWORD: cidadao_dev
+      POSTGRES_DB: cidadao
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cidadao"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - cidadao-net
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - cidadao-net
+
+volumes:
+  postgres-data:
+
+networks:
+  cidadao-net:
