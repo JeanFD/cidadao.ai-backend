@@ -4,12 +4,37 @@ Enables natural language queries like "Ministério da Saúde" -> code "26000"
 """
 
 import re
+from typing import TypedDict
 
 from unidecode import unidecode
 
+
+class OrganizationData(TypedDict):
+    """Schema of an entry in FEDERAL_ORGANIZATIONS."""
+
+    official_name: str
+    aliases: list[str]
+
+
+class OrganizationMatch(TypedDict):
+    """Result entry returned by ``extract_organizations_from_text``."""
+
+    code: str
+    name: str
+    matched_text: str
+
+
+class OrganizationListing(TypedDict):
+    """Entry returned by ``list_all_organizations``."""
+
+    code: str
+    name: str
+    aliases: list[str]
+
+
 # Complete mapping of Brazilian federal government organizations
 # Source: Portal da Transparência Federal API
-FEDERAL_ORGANIZATIONS = {
+FEDERAL_ORGANIZATIONS: dict[str, OrganizationData] = {
     # Ministérios e Órgãos Superiores
     "20000": {
         "official_name": "Presidência da República",
@@ -206,12 +231,13 @@ FEDERAL_ORGANIZATIONS = {
 class OrganizationMapper:
     """Maps organization names to official codes for API queries"""
 
-    def __init__(self):
-        self.orgs = FEDERAL_ORGANIZATIONS
+    def __init__(self) -> None:
+        self.orgs: dict[str, OrganizationData] = FEDERAL_ORGANIZATIONS
+        self.alias_to_code: dict[str, str] = {}
         # Build reverse index for fast lookup
         self._build_reverse_index()
 
-    def _build_reverse_index(self):
+    def _build_reverse_index(self) -> None:
         """Build reverse index from aliases to codes"""
         self.alias_to_code = {}
 
@@ -274,7 +300,7 @@ class OrganizationMapper:
 
         return None
 
-    def extract_organizations_from_text(self, text: str) -> list[dict]:
+    def extract_organizations_from_text(self, text: str) -> list[OrganizationMatch]:
         """
         Extract all organization mentions from text.
 
@@ -297,7 +323,7 @@ class OrganizationMapper:
         if not text:
             return []
 
-        found = []
+        found: list[OrganizationMatch] = []
         normalized_text = self._normalize(text)
 
         # Search for each alias in the text
@@ -315,11 +341,11 @@ class OrganizationMapper:
 
         return found
 
-    def get_organization_info(self, code: str) -> dict | None:
+    def get_organization_info(self, code: str) -> OrganizationData | None:
         """Get full organization information by code"""
         return self.orgs.get(code)
 
-    def list_all_organizations(self) -> list[dict]:
+    def list_all_organizations(self) -> list[OrganizationListing]:
         """List all available organizations"""
         return [
             {
@@ -332,7 +358,7 @@ class OrganizationMapper:
 
 
 # Global singleton instance
-_mapper_instance = None
+_mapper_instance: OrganizationMapper | None = None
 
 
 def get_organization_mapper() -> OrganizationMapper:
